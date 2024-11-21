@@ -3,7 +3,7 @@ from ast import literal_eval
 
 import runner
 import stones
-from coder import bind_shell, egghunter, exec_command, reverse_shell
+from coder import bind_shell, egghunter, exec_command, reverse_shell, copy_and_execute
 
 EXIT_FUNCTIONS = {
     "process": ("KERNEL32.DLL", "TerminateProcess"),
@@ -115,6 +115,24 @@ def parse_args():
             help="File path to load",
         )
         return loadfile_parser
+    
+    def setup_copyandexecute_parser(subparsers):
+        copyandexecute_parser = subparsers.add_parser(
+            "copyandexecute", help="Copy a file from source to destination and execute it (CreateProcess)."
+        )
+        copyandexecute_parser.add_argument(
+            "-s",
+            "--source",
+            required=True,
+            help="Source path",
+        )
+        copyandexecute_parser.add_argument(
+            "-d",
+            "--destination",
+            required=True,
+            help="Destination path",
+        )
+        return copyandexecute_parser
 
     parser = setup_parser()
     mode_subparsers = parser.add_subparsers(
@@ -126,6 +144,7 @@ def parse_args():
     setup_exec_parser(mode_subparsers)
     setup_egghunter_parser(mode_subparsers)
     setup_loadfile_parser(mode_subparsers)
+    setup_copyandexecute_parser(mode_subparsers)
 
     return parser.parse_args()
 
@@ -162,6 +181,13 @@ def generate_asm_code(args, bad_chars):
 
         elif args.egghunter_type == "seh":
             code = egghunter.generate_seh(args.tag, debug=args.use_windbg)
+            
+    elif args.mode == "copyandexecute":
+        code = copy_and_execute.generate(
+            bad_chars=bad_chars,
+            exit_func=EXIT_FUNCTIONS[args.exit_func],
+            debug=args.use_windbg,
+        )
 
     return code
 
