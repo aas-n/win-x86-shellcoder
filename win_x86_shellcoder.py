@@ -120,18 +120,6 @@ def parse_args():
         copyandexecute_parser = subparsers.add_parser(
             "copyandexecute", help="Copy a file from source to destination and execute it (CreateProcess)."
         )
-        copyandexecute_parser.add_argument(
-            "-s",
-            "--source",
-            required=True,
-            help="Source path",
-        )
-        copyandexecute_parser.add_argument(
-            "-d",
-            "--destination",
-            required=True,
-            help="Destination path",
-        )
         return copyandexecute_parser
 
     parser = setup_parser()
