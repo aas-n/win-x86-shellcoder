@@ -202,11 +202,11 @@ def main():
     print(f"shellcode = {bytes(shellcode)}")
 
     contains_bad_chars = any(c in bad_chars for c in shellcode)
-    if contains_bad_chars:
-        instructions = stones.disassemble(shellcode)
-        asm = stones.find_bad_chars(instructions, bad_chars)
-        print("\n# bad chars were found in the shellcode")
-        print(asm)
+    #if contains_bad_chars:
+    instructions = stones.disassemble(shellcode)
+    asm = stones.find_bad_chars(instructions, bad_chars)
+    print("\n# bad chars were found in the shellcode")
+    print(asm)
 
     if args.run_shellcode:
         ptr = runner.load_shellcode(shellcode)

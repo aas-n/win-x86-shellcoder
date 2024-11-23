@@ -57,6 +57,7 @@ def find_hash_key(functions, bad_chars):
 
 
 def push_string(input_str, bad_chars, end=b"\x00"):
+    print(bad_chars)
     def gen_push_code(dword):
         if not any(c in bad_chars for c in dword):
             return f'push  {hex(int.from_bytes(dword, "little"))};'
@@ -71,7 +72,7 @@ def push_string(input_str, bad_chars, end=b"\x00"):
             )
 
     def gen_xor_code(dword):
-        xor_dword_1 = xor_dword_2 = b""
+        xor_dword_1 = xor_dword_2 = b"\x00"
         for i in range(4):
             for xor_byte_1 in range(256):
                 xor_byte_2 = dword[i] ^ xor_byte_1
